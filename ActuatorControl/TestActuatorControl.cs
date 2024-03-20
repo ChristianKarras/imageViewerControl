@@ -6,8 +6,8 @@ namespace ActuatorControl
         {
 
             double[] stepsizes = new double[3] { 0.005, 0.02, 0.1 };
-            actuatorControl1 = new ActuatorControl("MyActuator", "X", stepsizes, 100, 0, "mm");
-
+            actuatorControl1 = new ActuatorControl();
+            actuatorControl1.initiateActuatorControl("MyActuator", "X", stepsizes, 100, 0, "mm");
             // 
             // actuatorControl1
             // 
