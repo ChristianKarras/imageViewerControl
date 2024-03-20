@@ -1,5 +1,7 @@
 ### testImageViewerControl
 
+NOTE: This one is for net7.0
+
 ## General
 
 A class for viewing 2 dimensional data sets of type double, Complex or Uint16. 
