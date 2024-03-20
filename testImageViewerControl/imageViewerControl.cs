@@ -1,6 +1,4 @@
-﻿using ScottPlot;
-using ScottPlot.Plottables;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -64,17 +62,52 @@ namespace testImageViewerControl
             NumericMin.Maximum = Decimal.MaxValue;
             NumericMin.Minimum = Decimal.MinValue;
 
+            // set events here to avoid from disappearing
+            trackBar1.Scroll += trackBar1_Scroll;
+            NumericMin.ValueChanged += NumericMin_ValueChanged;
+            pictureBox1.Paint += pictureBox1_Paint;
+            pictureBox1.MouseClick += pictureBox1_MouseClick;
+            pictureBox1.MouseDown += pictureBox1_MouseDown;
+            pictureBox1.MouseLeave += pictureBox1_MouseLeave;
+            pictureBox1.MouseMove += pictureBox1_MouseMove;
+            pictureBox1.MouseUp += pictureBox1_MouseUp;
+            pictureBox1.PreviewKeyDown += pictureBox1_PreviewKeyDown;
+            CMItemSave.Click += CMItemSave_Click;
+            saveInclOverlaysToolStripMenuItem.Click += saveInclOverlaysToolStripMenuItem_Click;
+            CMcopytoClipboard.Click += CMcopytoClipboard_Click;
+            copyToClipboardInclOverlaysToolStripMenuItem.Click += copyToClipboardInclOverlaysToolStripMenuItem_Click;
+            keepAspektRatioToolStripMenuItem.Click += keepAspektRatioToolStripMenuItem_Click;
+            autoscaleToolStripMenuItem.Click += autoscaleToolStripMenuItem_Click;
+            rescaleToolStripMenuItem.Click += rescaleToolStripMenuItem_Click;
+            highlightThresholdedAreasToolStripMenuItem.Click += highlightThresholdedAreasToolStripMenuItem_Click;
+            linearToolStripMenuItem.Click += linearToolStripMenuItem_Click;
+            logToolStripMenuItem.Click += logToolStripMenuItem_Click;
+            centerCursorToolStripMenuItem.Click += centerCursorToolStripMenuItem_Click;
+            showCorsairCirclesToolStripMenuItem.Click += showCorsairCirclesToolStripMenuItem_Click;
+            simpleToolStripMenuItem.Click += simpleToolStripMenuItem_Click;
+            zoomToolStripMenuItem.Click += zoomToolStripMenuItem_Click;
+            unzoomToolStripMenuItem.Click += unzoomToolStripMenuItem_Click;
+            zoomSelectedAreaToolStripMenuItem.Click += zoomSelectedAreaToolStripMenuItem_Click;
+            showToolStripMenuItem.Click += showToolStripMenuItem_Click;
+            OverlayColorStripComboBox1.SelectedIndexChanged += OverlayColorStripComboBox1_SelectedIndexChanged;
+            toolStripOverlayLineSize.SelectedIndexChanged += toolStripOverlayLineSize_SelectedIndexChanged;
+            CM_cmplxAbs.Click += CM_cmplxAbs_Click;
+            CM_cmplxPhase.Click += CM_cmplxPhase_Click;
+            CM_cmplxReal.Click += CM_cmplxReal_Click;
+            CM_cmplxImag.Click += CM_cmplxImag_Click;
+            NumericGamma.ValueChanged += NumericGamma_ValueChanged;
+            NumericMax.ValueChanged += NumericMax_ValueChanged;
         }
 
 
         #region TODOs
         // TODO:  multidim images (mulitple channels)
 
-        
+
         // TODO: Set Colormap (Heat, GW, Cyclic)
         // Handle corsair ring size adaption
-        
-        
+
+
         #endregion
 
         #region global settings parameters (not public)
@@ -141,6 +174,23 @@ namespace testImageViewerControl
         private bool showOverlays = true;
         private bool markThresholdedAreas = false;
         private bool _externalThresholdSet = false;
+        private bool _imageIsProcessing = false;
+        private bool _mouseOnPicturebox = false;
+
+        // locking / threading etc
+        private readonly object _lock = new object();
+
+        private class bkgrdWorkerArgs
+        {
+            internal readonly Complex[,] cmplxData;
+            internal readonly double[,] dblData;
+
+            internal bkgrdWorkerArgs(Complex[,] cData, double[,] dData)
+            {
+                cmplxData = cData;
+                dblData = dData;
+            }
+        }
 
         // Timing infos
         private static double timeToLoadImageMS = 0;
@@ -148,10 +198,12 @@ namespace testImageViewerControl
         /// <summary>
         /// Image Parameter Collection
         /// </summary>
-        public imageParameters parameters { get 
-            { 
-             return new imageParameters();
-            } 
+        public imageParameters parameters
+        {
+            get
+            {
+                return new imageParameters();
+            }
         }
 
 
@@ -162,12 +214,12 @@ namespace testImageViewerControl
         //private int imHeight = 0;
         //private double[,] displayeImageArea = null;
 
-        public struct imageParameters
+        public class imageParameters
         {
             public imageParameters()
             {
                 dataSetSizePixels = rawSize;
-                dataSetSizeMicroMeter = new SizeF(rawSize.Width*pxs.X, rawSize.Height*pxs.Y);
+                dataSetSizeMicroMeter = new SizeF(rawSize.Width * pxs.X, rawSize.Height * pxs.Y);
                 displayedDataSetSizePixels = zoomedArea.Size;
                 displayedDataSetSizeMicroMeter = new SizeF(zoomedArea.Width * pxs.X, zoomedArea.Height * pxs.Y);
                 pixelSizeMicroMeter = pxs;
@@ -175,8 +227,8 @@ namespace testImageViewerControl
                 mouseCursorCoordinatePixels = dataMouseCursorCoordinate;
                 positionOfSelectionPixels = selection.Location;
                 selectionSizePixels = selection.Size;
-                selectionSizeMicroMeter = new SizeF(selection.Width*pxs.X, selection.Height*pxs.Y);
-                selectionDiagonalPixels = Math.Sqrt(selection.Width*selection.Width + selection.Height*selection.Height);
+                selectionSizeMicroMeter = new SizeF(selection.Width * pxs.X, selection.Height * pxs.Y);
+                selectionDiagonalPixels = Math.Sqrt(selection.Width * selection.Width + selection.Height * selection.Height);
                 selectionDiagonalMicroMeter = Math.Sqrt(selectionSizeMicroMeter.Width * selectionSizeMicroMeter.Width + selectionSizeMicroMeter.Height * selectionSizeMicroMeter.Height);
                 dblDataValueAtMouseCursor = valueAtMouseCursorRaw.Real;
                 dblDataValueAtImageCursor = valueAtImageCursorRaw.Real;
@@ -189,20 +241,20 @@ namespace testImageViewerControl
                 loadTimeOfImageMicroSeconds = timeToLoadImageMS;
             }
 
-            
+
             public Size dataSetSizePixels { get; }
             public SizeF dataSetSizeMicroMeter { get; }
             public Size displayedDataSetSizePixels { get; }
             public SizeF displayedDataSetSizeMicroMeter { get; }
-            
+
             public PointF pixelSizeMicroMeter { get; }
             public Point imageCursorCoordinatePixels { get; }
             public Point mouseCursorCoordinatePixels { get; }
             public Point positionOfSelectionPixels { get; }
             public Size selectionSizePixels { get; }
             public SizeF selectionSizeMicroMeter { get; }
-            public double selectionDiagonalPixels {  get; }
-            public double selectionDiagonalMicroMeter {  get; }
+            public double selectionDiagonalPixels { get; }
+            public double selectionDiagonalMicroMeter { get; }
             public double dblDataValueAtMouseCursor { get; }
             public Complex cmplxDataValueAtMouseCursor { get; }
             public double dblDataValueAtImageCursor { get; }
@@ -210,7 +262,7 @@ namespace testImageViewerControl
             public double dataSetMax { get; }
             public double dataSetMin { get; }
 
-            public double displayedDataSetMax {  get; }
+            public double displayedDataSetMax { get; }
             public double displayedDataSetMin { get; }
 
             public double loadTimeOfImageMicroSeconds { get; }
@@ -257,9 +309,9 @@ namespace testImageViewerControl
             set
             { pxs = new PointF((float)value, (float)value * (float)pxsRatio); }
         }
-       /// <summary>
-       /// The ratio pixelsize in X / pixelsize in Y, default is 1
-       /// </summary>
+        /// <summary>
+        /// The ratio pixelsize in X / pixelsize in Y, default is 1
+        /// </summary>
         public double pixelSizeRatioYbyX
         {
             set
@@ -306,18 +358,20 @@ namespace testImageViewerControl
         }
 
 
-       
+
         /// <summary>
         /// List of rectangels to be displayed as overlay (in pixels)
         /// </summary>
-        public List<System.Drawing.Rectangle> rectOverlays {
-            set {
+        public List<System.Drawing.Rectangle> rectOverlays
+        {
+            set
+            {
                 rOL = value;
                 pictureBox1.Invalidate();
             }
-            
-         }
-            
+
+        }
+
         /// <summary>
         /// List of ellipses to be displayed as overlay (in pixels)
         /// </summary>
@@ -461,7 +515,8 @@ namespace testImageViewerControl
                         rawImage[i, j] = px;
                     }
                 }
-                updateImage();
+
+                updateImage();  // this takes typically 45 ms, so its now shifted to a Backrougnd worker thread
                 timeToLoadImageMS = (DateTime.Now - t1).TotalMilliseconds;
 
             }
@@ -912,84 +967,119 @@ namespace testImageViewerControl
 
         private Complex getValueAtDataSetCoordinate(Point crd)
         {
-            Complex v = dataIsComplex ? cmplxRawImage[crd.Y, crd.X] : new Complex(rawImage[crd.Y, crd.X], 0);
-            return v;
+            try
+            {
+                Complex v = dataIsComplex ? cmplxRawImage[crd.Y, crd.X] : new Complex(rawImage[crd.Y, crd.X], 0);
+                return v;
+            }
+            catch (Exception e) { return (new Complex(0, 0)); }
         }
 
-        private void extractLineCutsFromDisplayedImage()
+        private void extractLineCutsFromDisplayedImage(Complex[,] _cmplRaw, double[,] _dblRaw)
         {
+            int _cursorX = 0;
+            int _cursorY = 0;
+            int _zoomW = 0;
+            int _zoomH = 0;
+            int _zoomX = 0;
+            int _zoomY = 0;
+            Interlocked.Exchange(ref _cursorX, dataCursorCoordinate.X);
+            Interlocked.Exchange(ref _cursorY, dataCursorCoordinate.Y);
+            Interlocked.Exchange(ref _zoomX, zoomedArea.X);
+            Interlocked.Exchange(ref _zoomY, zoomedArea.Y);
+            Interlocked.Exchange(ref _zoomW, zoomedArea.Width);
+            Interlocked.Exchange(ref _zoomH, zoomedArea.Height);
 
-            if (pointInRect(dataCursorCoordinate, zoomedArea))
+            lock (_lock)
             {
-                xLineCut = new double[zoomedArea.Width];
-                xPosLineCutInUm = new double[zoomedArea.Width];
-                yLineCut = new double[zoomedArea.Height];
-                yPosLineCutInUm = new double[zoomedArea.Height];
-
-                valueAtImageCursorRaw = getValueAtDataSetCoordinate(dataCursorCoordinate);
-                for (int i = 0; i < zoomedArea.Width; i++)
+                // todo lock this ressource
+                //if (pointInRect(dataCursorCoordinate, zoomedArea))
+                Point _cu = new Point(_cursorX, _cursorY);
+                Rectangle _zo = new Rectangle(_zoomX, _zoomY, _zoomW, _zoomH);
+                if (pointInRect(_cu, _zo))
                 {
+                    xLineCut = new double[_zo.Width];
+                    xPosLineCutInUm = new double[_zo.Width];
+                    yLineCut = new double[_zo.Height];
+                    yPosLineCutInUm = new double[_zo.Height];
 
-                    xLineCut[i] = dataIsComplex ? getCmplxVal(cmplxRawImage[dataCursorCoordinate.Y, i + zoomedArea.X]) : rawImage[dataCursorCoordinate.Y, i + zoomedArea.X];
-                    xPosLineCutInUm[i] = (i + zoomedArea.X) * pxs.X;
-                }
-                for (int i = 0; i < zoomedArea.Height; i++)
-                {
-                    yLineCut[i] = dataIsComplex ? getCmplxVal(cmplxRawImage[i + zoomedArea.Y, dataCursorCoordinate.X]) : rawImage[i + zoomedArea.Y, dataCursorCoordinate.X];
-                    yPosLineCutInUm[i] = (i + zoomedArea.Y) * pxs.Y; ;
+                    valueAtImageCursorRaw = getValueAtDataSetCoordinate(_cu);
+                    for (int i = 0; i < _zo.Width; i++)
+                    {
+
+                        xLineCut[i] = dataIsComplex ? getCmplxVal(_cmplRaw[_cu.Y, i + _zo.X]) : _dblRaw[_cu.Y, i + _zo.X];
+                        xPosLineCutInUm[i] = (i + _zo.X) * pxs.X;
+                    }
+                    for (int i = 0; i < _zo.Height; i++)
+                    {
+                        yLineCut[i] = dataIsComplex ? getCmplxVal(_cmplRaw[i + _zo.Y, _cu.X]) : _dblRaw[i + _zo.Y, _cu.X];
+                        yPosLineCutInUm[i] = (i + _zo.Y) * pxs.Y; ;
+                    }
                 }
             }
 
         }
 
 
-        private double[,] extractDisplayedDataFromRaw()
+        private double[,] extractDisplayedDataFromRaw(Complex[,] _cmplRaw, double[,] _dblRaw)
         {
             double px;
             double[,] displayeImageArea = new double[zoomedArea.Height, zoomedArea.Width];
 
             List<double> minVal = new List<double>();
             List<double> maxVal = new List<double>();
-            if (dataIsComplex && cmplxRawImage != null)
+            lock (_lock)
             {
-                for (int i = 0; i < zoomedArea.Height; i++)
+
+                if (dataIsComplex && _cmplRaw != null)
                 {
-                    for (int j = 0; j < zoomedArea.Width; j++)
+                    try
                     {
-                        px = getCmplxVal(cmplxRawImage[i + zoomedArea.Y, j + zoomedArea.X]);
-                        minVal = makeMinList(minVal, px, nthVal);
-                        maxVal = makeMaxList(maxVal, px, nthVal);
-                        displayeImageArea[i, j] = preProcPixel(px);
+                        for (int i = 0; i < zoomedArea.Height; i++)
+                        {
+                            for (int j = 0; j < zoomedArea.Width; j++)
+                            {
+                                px = getCmplxVal(_cmplRaw[i + zoomedArea.Y, j + zoomedArea.X]);
+                                minVal = makeMinList(minVal, px, nthVal);
+                                maxVal = makeMaxList(maxVal, px, nthVal);
+                                displayeImageArea[i, j] = preProcPixel(px);
 
+                            }
+                        }
                     }
+                    catch (Exception e) { }
                 }
-            }
-            else if (rawImage != null)
-            {
-                for (int i = 0; i < zoomedArea.Height; i++)
+                else if (_dblRaw != null)
                 {
-                    for (int j = 0; j < zoomedArea.Width; j++)
+                    //Console.WriteLine("_dblRaw Größe {0}, zoomed area: {1}", _dblRaw.Length,zoomedArea.ToString());
+                    try
                     {
-                        px = rawImage[i + zoomedArea.Y, j + zoomedArea.X];
-                        minVal = makeMinList(minVal, px, nthVal);
-                        maxVal = makeMaxList(maxVal, px, nthVal);
-                        displayeImageArea[i, j] = preProcPixel(px);
+                        for (int i = 0; i < zoomedArea.Height; i++)
+                        {
+                            for (int j = 0; j < zoomedArea.Width; j++)
+                            {
+                                px = _dblRaw[i + zoomedArea.Y, j + zoomedArea.X];
+                                minVal = makeMinList(minVal, px, nthVal);
+                                maxVal = makeMaxList(maxVal, px, nthVal);
+                                displayeImageArea[i, j] = preProcPixel(px);
+                            }
+                        }
                     }
+                    catch (Exception e) { }
+
                 }
 
-            }
-
-            if (minVal.Count > 0 && maxVal.Count > 0)
-            {
-                if (autoScale || _requiresMinMaxBoxUpdat)
+                if (minVal.Count > 0 && maxVal.Count > 0)
                 {
-                    displayRangeLowerThreshold = minVal[0];
-                    displayRangeUpperThreshold = maxVal[0];
+                    if (autoScale || _requiresMinMaxBoxUpdat)
+                    {
+                        displayRangeLowerThreshold = minVal[0];
+                        displayRangeUpperThreshold = maxVal[0];
+                    }
+                    displMax = maxVal.Last();
+                    displMin = minVal.Last();
                 }
-                displMax = maxVal.Last();
-                displMin = minVal.Last();
             }
-            
             return displayeImageArea;
         }
 
@@ -1001,18 +1091,18 @@ namespace testImageViewerControl
         #region Handle Bitmaps for display
 
 
-        private Bitmap rawToImg(double[,] input)
+        private int[] rawToImgBuf(double[,] input)
         {
             double lt = preProcPixel(displayRangeLowerThreshold);
             double ut = preProcPixel(displayRangeUpperThreshold);
-            BitmapData bd;
+
             if (input == null)
                 return (null);
             else
             {
                 // prepare image display
                 ;
-                Bitmap returnBitMap = new Bitmap(input.GetLength(1), input.GetLength(0), PixelFormat.Format32bppPArgb);
+
                 int[] buf = new int[input.Length];
 
                 // fill buffer and lineCuts
@@ -1027,15 +1117,23 @@ namespace testImageViewerControl
                     }
                 }
 
-                // set bitmap data
-                bd = returnBitMap.LockBits(new System.Drawing.Rectangle(0, 0, input.GetLength(1), input.GetLength(0)), ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
-                Marshal.Copy(buf, 0, bd.Scan0, (int)input.Length);
-                returnBitMap.UnlockBits(bd);
-                bd = null;
-                return (returnBitMap);
+                return (buf);
+
             }
         }
 
+        private Bitmap imgBufToBmp(int[] _buf, int _width, int _height)
+        {
+            if (_buf == null) return null;
+            BitmapData bd;
+            Bitmap returnBitMap = new Bitmap(_width, _height, PixelFormat.Format32bppPArgb);
+            bd = returnBitMap.LockBits(new System.Drawing.Rectangle(0, 0, _width, _height), ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+            if (_buf.Length == _width * _height) { Marshal.Copy(_buf, 0, bd.Scan0, (int)_buf.Length); }
+
+            returnBitMap.UnlockBits(bd);
+            bd = null;
+            return (returnBitMap);
+        }
 
         #endregion
 
@@ -1118,16 +1216,17 @@ namespace testImageViewerControl
                 //Console.WriteLine("Painting");
                 //label1.Text = min.ToString(); 
 
-                pictureBox1.Focus();
+                // only keep focus on picturebox if mouse is on
+                if (_mouseOnPicturebox) pictureBox1.Focus();
             }
 
 
         }
 
         #region convToStrings
-        private string valToString(double val) 
-        { 
-          return(string.Format("{0:#.###E+0}", val));  
+        private string valToString(double val)
+        {
+            return (string.Format("{0:#.###E+0}", val));
         }
         private string valToStringSimple(double val)
         {
@@ -1141,7 +1240,7 @@ namespace testImageViewerControl
             }
             else
             {
-                return (string.Format("{0:#.###E+0}", val.Real) +" + i"+ string.Format("{0:#.###E+0}", val.Imaginary) + "(Abs = " + string.Format("{0:#.###E+0}",val.Magnitude)+" Phi = "+ string.Format("{0:0.000}", val.Phase)+")");
+                return (string.Format("{0:#.###E+0}", val.Real) + " + i" + string.Format("{0:#.###E+0}", val.Imaginary) + "(Abs = " + string.Format("{0:#.###E+0}", val.Magnitude) + " Phi = " + string.Format("{0:0.000}", val.Phase) + ")");
             }
         }
         private string valToString(int val)
@@ -1151,15 +1250,15 @@ namespace testImageViewerControl
         private string rectToString(System.Drawing.Rectangle rect)
         {
             double dpx = Math.Sqrt(rect.Width * rect.Width + rect.Height * rect.Height);
-            double dum = Math.Sqrt(rect.Width * rect.Width*pxs.X * pxs.X + rect.Height * rect.Height * pxs.Y* pxs.Y);
-            string s = "W = "+ rect.Width.ToString() + " ("+string.Format("{0:0.000}", rect.Width*pxs.X) +")"+ " H = " + rect.Height.ToString() + " (" + string.Format("{0:0.000}", rect.Height * pxs.Y) + ")" + " D = " + string.Format("{0:0.000}", dpx) + " (" + string.Format("{0:0.000}", dum) + ")";
+            double dum = Math.Sqrt(rect.Width * rect.Width * pxs.X * pxs.X + rect.Height * rect.Height * pxs.Y * pxs.Y);
+            string s = "W = " + rect.Width.ToString() + " (" + string.Format("{0:0.000}", rect.Width * pxs.X) + ")" + " H = " + rect.Height.ToString() + " (" + string.Format("{0:0.000}", rect.Height * pxs.Y) + ")" + " D = " + string.Format("{0:0.000}", dpx) + " (" + string.Format("{0:0.000}", dum) + ")";
             return s;
 
         }
 
-        private string posToString(Point pos) 
-        { 
-            return("X = "+pos.X.ToString() + " Y = "+pos.Y.ToString());
+        private string posToString(Point pos)
+        {
+            return ("X = " + pos.X.ToString() + " Y = " + pos.Y.ToString());
         }
         private string posToString(PointF pos)
         {
@@ -1175,28 +1274,29 @@ namespace testImageViewerControl
             cursorVal[0] = posToString(p.mouseCursorCoordinatePixels);
             if (selecting)
             {
-                
+
                 System.Drawing.Rectangle _r = rectFromTwoPoints(convImgPointToDataPoint(selectionStart), convImgPointToDataPoint(mouseCursorCoordinate));
-                cursorVal[0] += "\t"+rectToString(_r)+"\t";
+                cursorVal[0] += "\t" + rectToString(_r) + "\t";
             }
             cursorVal[0] += "\t" + valToString(p.cmplxDataValueAtMouseCursor);
             textBoxCursorInfo.Lines = cursorVal;
 
             selectionInfo[0] = "PXS [um]: " + posToString(p.pixelSizeMicroMeter);
-            if (selection.Width > 0) 
+            if (selection.Width > 0)
             {
                 selectionInfo[1] = "Pos:  " + posToString(selection.Location);
                 selectionInfo[2] = "Size: " + rectToString(selection);
             }
-            
+
             textBoxSelectionInfo.Lines = selectionInfo;
             textBoxFrameLoadTime.Text = "Frame Load [ms] = " + valToStringSimple(p.loadTimeOfImageMicroSeconds);
-            
-            
+
+
         }
 
         private void updatePlots()
         {
+            /*
             PlotFormX.Plot.Clear();
             //PlotFormX.Plot.Add.SignalXY(xPosOfPixels, xCutDataProcessed);
             PlotFormX.Plot.Add.Scatter<double, double>(xPosLineCutInUm, xLineCut);
@@ -1209,23 +1309,54 @@ namespace testImageViewerControl
             PlotFormY.Plot.Axes.AutoScaleX();
             PlotFormY.Plot.Axes.AutoScaleY();
             PlotFormY.Refresh();
+            */
         }
 
-        // updates entire image that is displaye (including image data)
+        // updates entire image that is displaye (including image data) -> done in background worker to not block gui
         private void updateImage()
         {
-            // at new image, after zooming after changing scale
-            //imgToShow = rawToImg(rawImage, zoomedArea.Left, zoomedArea.Width, zoomedArea.Top, zoomedArea.Height);
 
-            extractLineCutsFromDisplayedImage();
-            imgToShow = rawToImg(extractDisplayedDataFromRaw());
-            if (autoScale || _requiresMinMaxBoxUpdat)
+            if (!_imageIsProcessing)
             {
-                _requiresMinMaxBoxUpdat = false;
-                NumericMax.Value = (decimal)displayRangeUpperThreshold;
-                NumericMin.Value = (decimal)displayRangeLowerThreshold;
+                _imageIsProcessing = true;
+                backgroundWorker1.RunWorkerAsync(new bkgrdWorkerArgs(cmplxRawImage, rawImage));
             }
-            pictureBox1.Invalidate();
+        }
+
+        //int[] computeImageInBackground(Complex[,] _cmpImg, double[,] _dblImg, BackgroundWorker worker, DoWorkEventArgs e)
+        int[] computeImageInBackground(bkgrdWorkerArgs b)
+        {
+            extractLineCutsFromDisplayedImage(b.cmplxData, b.dblData);
+            int[] buf = rawToImgBuf(extractDisplayedDataFromRaw(b.cmplxData, b.dblData));
+            return buf;
+
+        }
+
+        private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
+        {
+            BackgroundWorker bgWorker = sender as BackgroundWorker;
+            e.Result = computeImageInBackground((bkgrdWorkerArgs)e.Argument);
+        }
+
+        private void backgroundWorker1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            _imageIsProcessing = false;
+            if (e.Error != null)
+            {
+                textBoxSelectionInfo.Text = "Error loading image: " + e.Error.Message;
+            }
+            else
+            {
+                imgToShow = imgBufToBmp((int[])e.Result, zoomedArea.Width, zoomedArea.Height);
+                if (autoScale || _requiresMinMaxBoxUpdat && imgToShow != null)
+                {
+                    _requiresMinMaxBoxUpdat = false;
+                    NumericMax.Value = (decimal)displayRangeUpperThreshold;
+                    NumericMin.Value = (decimal)displayRangeLowerThreshold;
+                }
+                valueAtMouseCursorRaw = getValueAtDataSetCoordinate(dataMouseCursorCoordinate);
+                pictureBox1.Invalidate();
+            }
 
         }
 
@@ -1242,7 +1373,7 @@ namespace testImageViewerControl
             if (pointInRect(e.Location, areaOfDrawnImageInPictureBox))
             {
                 dataCursorCoordinate = convImgPointToDataPoint(e.Location);
-                extractLineCutsFromDisplayedImage();
+                extractLineCutsFromDisplayedImage(cmplxRawImage, rawImage);
             }
         }
 
@@ -1263,6 +1394,11 @@ namespace testImageViewerControl
         {
             mouseCursorCoordinate = new Point(-1, -1);
             dataMouseCursorCoordinate = new Point(-1, -1);
+            _mouseOnPicturebox = false;
+        }
+        private void pictureBox1_MouseEnter(object sender, EventArgs e)
+        {
+            _mouseOnPicturebox = true;
         }
 
         private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
@@ -1297,7 +1433,7 @@ namespace testImageViewerControl
             if (e.KeyCode == Keys.Right) { moveDataCursor(1, 0); }
             if (e.KeyCode == Keys.Up) { moveDataCursor(0, -1); }
             if (e.KeyCode == Keys.Down) { moveDataCursor(0, 1); }
-            extractLineCutsFromDisplayedImage();
+            extractLineCutsFromDisplayedImage(cmplxRawImage, rawImage);
             pictureBox1.Invalidate();
 
         }
@@ -1602,14 +1738,18 @@ namespace testImageViewerControl
             NumericGamma.Value = (decimal)Math.Round(gammaValue, 3);
             updateImage();
         }
+
+
+
+
+
+
+
+
         #endregion
 
-
-
-
-
-
         #endregion
+
 
 
     }

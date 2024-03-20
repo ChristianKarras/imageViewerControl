@@ -8,8 +8,4 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ScottPlot.WinForms" Version="5.0.21" />
-  </ItemGroup>
-
 </Project>

@@ -33,7 +33,6 @@ namespace testImageViewerControl
         {
             components = new Container();
             tableLayoutPanel1 = new TableLayoutPanel();
-            PlotFormX = new ScottPlot.WinForms.FormsPlot();
             trackBar1 = new TrackBar();
             NumericMin = new NumericUpDown();
             pictureBox1 = new PictureBox();
@@ -70,13 +69,13 @@ namespace testImageViewerControl
             CM_cmplxImag = new ToolStripMenuItem();
             label3 = new Label();
             label4 = new Label();
-            PlotFormY = new ScottPlot.WinForms.FormsPlot();
             NumericGamma = new NumericUpDown();
             textBoxCursorInfo = new TextBox();
             NumericMax = new NumericUpDown();
             label2 = new Label();
             textBoxSelectionInfo = new TextBox();
             textBoxFrameLoadTime = new TextBox();
+            backgroundWorker1 = new BackgroundWorker();
             tableLayoutPanel1.SuspendLayout();
             ((ISupportInitialize)trackBar1).BeginInit();
             ((ISupportInitialize)NumericMin).BeginInit();
@@ -89,20 +88,18 @@ namespace testImageViewerControl
             // tableLayoutPanel1
             // 
             tableLayoutPanel1.ColumnCount = 7;
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 59F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 59F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
-            tableLayoutPanel1.Controls.Add(PlotFormX, 0, 2);
             tableLayoutPanel1.Controls.Add(trackBar1, 5, 4);
             tableLayoutPanel1.Controls.Add(NumericMin, 3, 3);
             tableLayoutPanel1.Controls.Add(pictureBox1, 0, 0);
             tableLayoutPanel1.Controls.Add(label3, 0, 3);
             tableLayoutPanel1.Controls.Add(label4, 5, 3);
-            tableLayoutPanel1.Controls.Add(PlotFormY, 5, 0);
             tableLayoutPanel1.Controls.Add(NumericGamma, 6, 3);
             tableLayoutPanel1.Controls.Add(textBoxCursorInfo, 0, 1);
             tableLayoutPanel1.Controls.Add(NumericMax, 1, 3);
@@ -122,42 +119,32 @@ namespace testImageViewerControl
             tableLayoutPanel1.Size = new Size(1200, 800);
             tableLayoutPanel1.TabIndex = 0;
             // 
-            // PlotFormX
-            // 
-            tableLayoutPanel1.SetColumnSpan(PlotFormX, 5);
-            PlotFormX.DisplayScale = 1F;
-            PlotFormX.Dock = DockStyle.Fill;
-            PlotFormX.Location = new Point(3, 583);
-            PlotFormX.Name = "PlotFormX";
-            PlotFormX.Size = new Size(1034, 154);
-            PlotFormX.TabIndex = 3;
-            // 
             // trackBar1
             // 
             tableLayoutPanel1.SetColumnSpan(trackBar1, 2);
             trackBar1.Dock = DockStyle.Fill;
-            trackBar1.Location = new Point(1043, 773);
+            trackBar1.Location = new Point(1044, 773);
+            trackBar1.Margin = new Padding(4, 3, 4, 3);
             trackBar1.Maximum = 100;
             trackBar1.Minimum = -200;
             trackBar1.Name = "trackBar1";
             trackBar1.RightToLeftLayout = true;
-            trackBar1.Size = new Size(154, 24);
+            trackBar1.Size = new Size(152, 24);
             trackBar1.TabIndex = 3;
-            trackBar1.Scroll += trackBar1_Scroll;
             // 
             // NumericMin
             // 
             NumericMin.DecimalPlaces = 3;
             NumericMin.Dock = DockStyle.Fill;
             NumericMin.Font = new Font("Segoe UI", 15.75F, FontStyle.Regular, GraphicsUnit.Point);
-            NumericMin.Location = new Point(223, 743);
+            NumericMin.Location = new Point(222, 743);
+            NumericMin.Margin = new Padding(4, 3, 4, 3);
             NumericMin.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
             NumericMin.Minimum = new decimal(new int[] { 1000000, 0, 0, int.MinValue });
             NumericMin.Name = "NumericMin";
             tableLayoutPanel1.SetRowSpan(NumericMin, 2);
-            NumericMin.Size = new Size(94, 35);
+            NumericMin.Size = new Size(92, 35);
             NumericMin.TabIndex = 3;
-            NumericMin.ValueChanged += NumericMin_ValueChanged;
             // 
             // pictureBox1
             // 
@@ -172,12 +159,7 @@ namespace testImageViewerControl
             pictureBox1.TabIndex = 0;
             pictureBox1.TabStop = false;
             pictureBox1.Paint += pictureBox1_Paint;
-            pictureBox1.MouseClick += pictureBox1_MouseClick;
-            pictureBox1.MouseDown += pictureBox1_MouseDown;
-            pictureBox1.MouseLeave += pictureBox1_MouseLeave;
-            pictureBox1.MouseMove += pictureBox1_MouseMove;
-            pictureBox1.MouseUp += pictureBox1_MouseUp;
-            pictureBox1.PreviewKeyDown += pictureBox1_PreviewKeyDown;
+            pictureBox1.MouseEnter += pictureBox1_MouseEnter;
             // 
             // CM_ImgCM
             // 
@@ -190,28 +172,24 @@ namespace testImageViewerControl
             CMItemSave.Name = "CMItemSave";
             CMItemSave.Size = new Size(245, 22);
             CMItemSave.Text = "Save";
-            CMItemSave.Click += CMItemSave_Click;
             // 
             // saveInclOverlaysToolStripMenuItem
             // 
             saveInclOverlaysToolStripMenuItem.Name = "saveInclOverlaysToolStripMenuItem";
             saveInclOverlaysToolStripMenuItem.Size = new Size(245, 22);
             saveInclOverlaysToolStripMenuItem.Text = "Save Incl. Overlays";
-            saveInclOverlaysToolStripMenuItem.Click += saveInclOverlaysToolStripMenuItem_Click;
             // 
             // CMcopytoClipboard
             // 
             CMcopytoClipboard.Name = "CMcopytoClipboard";
             CMcopytoClipboard.Size = new Size(245, 22);
             CMcopytoClipboard.Text = "Copy To Clipboard";
-            CMcopytoClipboard.Click += CMcopytoClipboard_Click;
             // 
             // copyToClipboardInclOverlaysToolStripMenuItem
             // 
             copyToClipboardInclOverlaysToolStripMenuItem.Name = "copyToClipboardInclOverlaysToolStripMenuItem";
             copyToClipboardInclOverlaysToolStripMenuItem.Size = new Size(245, 22);
             copyToClipboardInclOverlaysToolStripMenuItem.Text = "Copy To Clipboard Incl. Overlays";
-            copyToClipboardInclOverlaysToolStripMenuItem.Click += copyToClipboardInclOverlaysToolStripMenuItem_Click;
             // 
             // toolStripSeparator1
             // 
@@ -225,28 +203,24 @@ namespace testImageViewerControl
             keepAspektRatioToolStripMenuItem.Name = "keepAspektRatioToolStripMenuItem";
             keepAspektRatioToolStripMenuItem.Size = new Size(245, 22);
             keepAspektRatioToolStripMenuItem.Text = "Keep Aspekt Ratio";
-            keepAspektRatioToolStripMenuItem.Click += keepAspektRatioToolStripMenuItem_Click;
             // 
             // autoscaleToolStripMenuItem
             // 
             autoscaleToolStripMenuItem.Name = "autoscaleToolStripMenuItem";
             autoscaleToolStripMenuItem.Size = new Size(245, 22);
             autoscaleToolStripMenuItem.Text = "Autoscale";
-            autoscaleToolStripMenuItem.Click += autoscaleToolStripMenuItem_Click;
             // 
             // rescaleToolStripMenuItem
             // 
             rescaleToolStripMenuItem.Name = "rescaleToolStripMenuItem";
             rescaleToolStripMenuItem.Size = new Size(245, 22);
             rescaleToolStripMenuItem.Text = "Rescale";
-            rescaleToolStripMenuItem.Click += rescaleToolStripMenuItem_Click;
             // 
             // highlightThresholdedAreasToolStripMenuItem
             // 
             highlightThresholdedAreasToolStripMenuItem.Name = "highlightThresholdedAreasToolStripMenuItem";
             highlightThresholdedAreasToolStripMenuItem.Size = new Size(245, 22);
             highlightThresholdedAreasToolStripMenuItem.Text = "Highlight Thresholded Areas";
-            highlightThresholdedAreasToolStripMenuItem.Click += highlightThresholdedAreasToolStripMenuItem_Click;
             // 
             // scaleViewToolStripMenuItem
             // 
@@ -262,28 +236,24 @@ namespace testImageViewerControl
             linearToolStripMenuItem.Name = "linearToolStripMenuItem";
             linearToolStripMenuItem.Size = new Size(106, 22);
             linearToolStripMenuItem.Text = "Linear";
-            linearToolStripMenuItem.Click += linearToolStripMenuItem_Click;
             // 
             // logToolStripMenuItem
             // 
             logToolStripMenuItem.Name = "logToolStripMenuItem";
             logToolStripMenuItem.Size = new Size(106, 22);
             logToolStripMenuItem.Text = "Log";
-            logToolStripMenuItem.Click += logToolStripMenuItem_Click;
             // 
             // centerCursorToolStripMenuItem
             // 
             centerCursorToolStripMenuItem.Name = "centerCursorToolStripMenuItem";
             centerCursorToolStripMenuItem.Size = new Size(245, 22);
             centerCursorToolStripMenuItem.Text = "Center Cursor";
-            centerCursorToolStripMenuItem.Click += centerCursorToolStripMenuItem_Click;
             // 
             // showCorsairCirclesToolStripMenuItem
             // 
             showCorsairCirclesToolStripMenuItem.Name = "showCorsairCirclesToolStripMenuItem";
             showCorsairCirclesToolStripMenuItem.Size = new Size(245, 22);
             showCorsairCirclesToolStripMenuItem.Text = "Show Corsair Circles";
-            showCorsairCirclesToolStripMenuItem.Click += showCorsairCirclesToolStripMenuItem_Click;
             // 
             // toolStripSeparator2
             // 
@@ -304,28 +274,24 @@ namespace testImageViewerControl
             simpleToolStripMenuItem.Name = "simpleToolStripMenuItem";
             simpleToolStripMenuItem.Size = new Size(110, 22);
             simpleToolStripMenuItem.Text = "Simple";
-            simpleToolStripMenuItem.Click += simpleToolStripMenuItem_Click;
             // 
             // zoomToolStripMenuItem
             // 
             zoomToolStripMenuItem.Name = "zoomToolStripMenuItem";
             zoomToolStripMenuItem.Size = new Size(110, 22);
             zoomToolStripMenuItem.Text = "Zoom";
-            zoomToolStripMenuItem.Click += zoomToolStripMenuItem_Click;
             // 
             // unzoomToolStripMenuItem
             // 
             unzoomToolStripMenuItem.Name = "unzoomToolStripMenuItem";
             unzoomToolStripMenuItem.Size = new Size(245, 22);
             unzoomToolStripMenuItem.Text = "Unzoom";
-            unzoomToolStripMenuItem.Click += unzoomToolStripMenuItem_Click;
             // 
             // zoomSelectedAreaToolStripMenuItem
             // 
             zoomSelectedAreaToolStripMenuItem.Name = "zoomSelectedAreaToolStripMenuItem";
             zoomSelectedAreaToolStripMenuItem.Size = new Size(245, 22);
             zoomSelectedAreaToolStripMenuItem.Text = "Zoom Selected Area";
-            zoomSelectedAreaToolStripMenuItem.Click += zoomSelectedAreaToolStripMenuItem_Click;
             // 
             // toolStripSeparator3
             // 
@@ -346,7 +312,6 @@ namespace testImageViewerControl
             showToolStripMenuItem.Name = "showToolStripMenuItem";
             showToolStripMenuItem.Size = new Size(181, 22);
             showToolStripMenuItem.Text = "Show";
-            showToolStripMenuItem.Click += showToolStripMenuItem_Click;
             // 
             // OverlayColorStripComboBox1
             // 
@@ -355,7 +320,6 @@ namespace testImageViewerControl
             OverlayColorStripComboBox1.Items.AddRange(new object[] { "Blue", "Red", "Yellow", "Green", "LightBlue", "Pink", "Violet" });
             OverlayColorStripComboBox1.Name = "OverlayColorStripComboBox1";
             OverlayColorStripComboBox1.Size = new Size(121, 23);
-            OverlayColorStripComboBox1.SelectedIndexChanged += OverlayColorStripComboBox1_SelectedIndexChanged;
             // 
             // toolStripOverlayLineSize
             // 
@@ -363,7 +327,6 @@ namespace testImageViewerControl
             toolStripOverlayLineSize.Items.AddRange(new object[] { "Line Width 1", "Line Width 2", "Line Width 3", "Line Width 5", "Line Width 10" });
             toolStripOverlayLineSize.Name = "toolStripOverlayLineSize";
             toolStripOverlayLineSize.Size = new Size(121, 23);
-            toolStripOverlayLineSize.SelectedIndexChanged += toolStripOverlayLineSize_SelectedIndexChanged;
             // 
             // CM_CMPLX
             // 
@@ -379,38 +342,35 @@ namespace testImageViewerControl
             CM_cmplxAbs.Name = "CM_cmplxAbs";
             CM_cmplxAbs.Size = new Size(121, 22);
             CM_cmplxAbs.Text = "Absolute";
-            CM_cmplxAbs.Click += CM_cmplxAbs_Click;
             // 
             // CM_cmplxPhase
             // 
             CM_cmplxPhase.Name = "CM_cmplxPhase";
             CM_cmplxPhase.Size = new Size(121, 22);
             CM_cmplxPhase.Text = "Phase";
-            CM_cmplxPhase.Click += CM_cmplxPhase_Click;
             // 
             // CM_cmplxReal
             // 
             CM_cmplxReal.Name = "CM_cmplxReal";
             CM_cmplxReal.Size = new Size(121, 22);
             CM_cmplxReal.Text = "Real";
-            CM_cmplxReal.Click += CM_cmplxReal_Click;
             // 
             // CM_cmplxImag
             // 
             CM_cmplxImag.Name = "CM_cmplxImag";
             CM_cmplxImag.Size = new Size(121, 22);
             CM_cmplxImag.Text = "Imag";
-            CM_cmplxImag.Click += CM_cmplxImag_Click;
             // 
             // label3
             // 
             label3.AutoSize = true;
             label3.Dock = DockStyle.Fill;
             label3.Font = new Font("Segoe UI", 15.75F, FontStyle.Regular, GraphicsUnit.Point);
-            label3.Location = new Point(3, 740);
+            label3.Location = new Point(4, 740);
+            label3.Margin = new Padding(4, 0, 4, 0);
             label3.Name = "label3";
             tableLayoutPanel1.SetRowSpan(label3, 2);
-            label3.Size = new Size(54, 60);
+            label3.Size = new Size(51, 60);
             label3.TabIndex = 0;
             label3.Text = "Max";
             // 
@@ -419,44 +379,36 @@ namespace testImageViewerControl
             label4.AutoSize = true;
             label4.Dock = DockStyle.Fill;
             label4.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point);
-            label4.Location = new Point(1043, 740);
+            label4.Location = new Point(1044, 740);
+            label4.Margin = new Padding(4, 0, 4, 0);
             label4.Name = "label4";
-            label4.Size = new Size(74, 30);
+            label4.Size = new Size(72, 30);
             label4.TabIndex = 0;
             label4.Text = "Gamma";
-            // 
-            // PlotFormY
-            // 
-            tableLayoutPanel1.SetColumnSpan(PlotFormY, 2);
-            PlotFormY.DisplayScale = 1F;
-            PlotFormY.Dock = DockStyle.Fill;
-            PlotFormY.Location = new Point(1043, 3);
-            PlotFormY.Name = "PlotFormY";
-            PlotFormY.Size = new Size(154, 544);
-            PlotFormY.TabIndex = 4;
             // 
             // NumericGamma
             // 
             NumericGamma.DecimalPlaces = 3;
             NumericGamma.Dock = DockStyle.Fill;
-            NumericGamma.Location = new Point(1123, 743);
+            NumericGamma.Location = new Point(1124, 743);
+            NumericGamma.Margin = new Padding(4, 3, 4, 3);
             NumericGamma.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
             NumericGamma.Minimum = new decimal(new int[] { 1, 0, 0, 262144 });
             NumericGamma.Name = "NumericGamma";
-            NumericGamma.Size = new Size(74, 23);
+            NumericGamma.Size = new Size(72, 23);
             NumericGamma.TabIndex = 2;
             NumericGamma.Value = new decimal(new int[] { 1, 0, 0, 0 });
-            NumericGamma.ValueChanged += NumericGamma_ValueChanged;
             // 
             // textBoxCursorInfo
             // 
             tableLayoutPanel1.SetColumnSpan(textBoxCursorInfo, 5);
             textBoxCursorInfo.Dock = DockStyle.Fill;
-            textBoxCursorInfo.Location = new Point(3, 553);
+            textBoxCursorInfo.Location = new Point(4, 553);
+            textBoxCursorInfo.Margin = new Padding(4, 3, 4, 3);
             textBoxCursorInfo.Multiline = true;
             textBoxCursorInfo.Name = "textBoxCursorInfo";
             textBoxCursorInfo.ReadOnly = true;
-            textBoxCursorInfo.Size = new Size(1034, 24);
+            textBoxCursorInfo.Size = new Size(1032, 24);
             textBoxCursorInfo.TabIndex = 4;
             textBoxCursorInfo.WordWrap = false;
             // 
@@ -466,11 +418,11 @@ namespace testImageViewerControl
             NumericMax.Dock = DockStyle.Fill;
             NumericMax.Font = new Font("Segoe UI", 15.75F, FontStyle.Regular, GraphicsUnit.Point);
             NumericMax.Location = new Point(63, 743);
+            NumericMax.Margin = new Padding(4, 3, 4, 3);
             NumericMax.Name = "NumericMax";
             tableLayoutPanel1.SetRowSpan(NumericMax, 2);
-            NumericMax.Size = new Size(94, 35);
+            NumericMax.Size = new Size(92, 35);
             NumericMax.TabIndex = 2;
-            NumericMax.ValueChanged += NumericMax_ValueChanged;
             // 
             // label2
             // 
@@ -478,16 +430,18 @@ namespace testImageViewerControl
             label2.Dock = DockStyle.Fill;
             label2.Font = new Font("Segoe UI", 15.75F, FontStyle.Regular, GraphicsUnit.Point);
             label2.Location = new Point(163, 740);
+            label2.Margin = new Padding(4, 0, 4, 0);
             label2.Name = "label2";
             tableLayoutPanel1.SetRowSpan(label2, 2);
-            label2.Size = new Size(54, 60);
+            label2.Size = new Size(51, 60);
             label2.TabIndex = 0;
             label2.Text = "Min";
             // 
             // textBoxSelectionInfo
             // 
             textBoxSelectionInfo.Dock = DockStyle.Fill;
-            textBoxSelectionInfo.Location = new Point(323, 743);
+            textBoxSelectionInfo.Location = new Point(322, 743);
+            textBoxSelectionInfo.Margin = new Padding(4, 3, 4, 3);
             textBoxSelectionInfo.Multiline = true;
             textBoxSelectionInfo.Name = "textBoxSelectionInfo";
             textBoxSelectionInfo.ReadOnly = true;
@@ -499,11 +453,17 @@ namespace testImageViewerControl
             // 
             tableLayoutPanel1.SetColumnSpan(textBoxFrameLoadTime, 2);
             textBoxFrameLoadTime.Dock = DockStyle.Fill;
-            textBoxFrameLoadTime.Location = new Point(1043, 553);
+            textBoxFrameLoadTime.Location = new Point(1044, 553);
+            textBoxFrameLoadTime.Margin = new Padding(4, 3, 4, 3);
             textBoxFrameLoadTime.Name = "textBoxFrameLoadTime";
             textBoxFrameLoadTime.ReadOnly = true;
-            textBoxFrameLoadTime.Size = new Size(154, 23);
+            textBoxFrameLoadTime.Size = new Size(152, 23);
             textBoxFrameLoadTime.TabIndex = 6;
+            // 
+            // backgroundWorker1
+            // 
+            backgroundWorker1.DoWork += backgroundWorker1_DoWork;
+            backgroundWorker1.RunWorkerCompleted += backgroundWorker1_RunWorkerCompleted;
             // 
             // imageViewerControl
             // 
@@ -538,9 +498,9 @@ namespace testImageViewerControl
         private ToolStripMenuItem CM_cmplxPhase;
         private ToolStripMenuItem CM_cmplxReal;
         private ToolStripMenuItem CM_cmplxImag;
-        private ScottPlot.WinForms.FormsPlot PlotFormX;
+        //private ScottPlot.WinForms.FormsPlot PlotFormX;
         private ToolStripMenuItem centerCursorToolStripMenuItem;
-        private ScottPlot.WinForms.FormsPlot PlotFormY;
+        //private ScottPlot.WinForms.FormsPlot PlotFormY;
         private Label label2;
         private Label label3;
         private Label label4;
@@ -574,5 +534,6 @@ namespace testImageViewerControl
         private TextBox textBoxCursorInfo;
         private TextBox textBoxSelectionInfo;
         private TextBox textBoxFrameLoadTime;
+        private BackgroundWorker backgroundWorker1;
     }
 }

@@ -21,15 +21,31 @@ namespace ActuatorControl
         /// <summary>
         /// A controll for an actuator. Note: this isn't controlling any actuator but only for managing user inputs (It's a User controll!)
         /// </summary>
+        public ActuatorControl()
+        {
+            InitializeComponent();
+            this.BUTTON_pos0.Click += new System.EventHandler(this.BUTTON_pos0_Click);
+            this.BUTTON_pos1.Click += new System.EventHandler(this.BUTTON_pos1_Click);
+            this.BUTTON_pos2.Click += new System.EventHandler(this.BUTTON_pos2_Click);
+            this.BUTTON_neg0.Click += new System.EventHandler(this.BUTTON_neg0_Click);
+            this.BUTTON_neg1.Click += new System.EventHandler(this.BUTTON_neg1_Click);
+            this.BUTTON_neg2.Click += new System.EventHandler(this.BUTTON_neg2_Click);
+        }
+
+
+
+        /// <summary>
+        /// Init the acutatorA controll for an actuator. Note: this isn't controlling any actuator but only for managing user inputs (It's a User controll!)
+        /// </summary>
         /// <param name="NameOfActuator">Name of the actuator (will be displayed above controlles)</param>
         /// <param name="Direction">Direction of the actuator (will be displayed above controlles)</param>
         /// <param name="Stepsizes">Stepsizes: Small, Middle, Large, has to be array of length 3 -> if shorter, largers steps will be zero, if longer will be ignored</param>
         /// <param name="velocity">Speed for the actuator</param>
         /// <param name="acceleration">Acceleration for the actuator</param>
         /// <param name="unit">Name of the actuator (will be displayed above controlles)</param>
-        public ActuatorControl(string NameOfActuator, string Direction, double[] StepSizes, double velocity, double acceleration, string Unit)
+        public void initiateActuatorControl(string NameOfActuator, string Direction, double[] StepSizes, double velocity, double acceleration, string Unit)
         {
-            InitializeComponent();
+
             if (StepSizes != null)
             {
                 if (StepSizes.Length > 0) { _stepsize[0] = StepSizes[0]; }
@@ -38,6 +54,7 @@ namespace ActuatorControl
             }
             name = NameOfActuator;
             direction = Direction;
+            _dir = Direction;
             unit = Unit;
             stepsize = _stepsize;
             this.velocity = velocity;
@@ -45,10 +62,11 @@ namespace ActuatorControl
 
 
         }
-
-     
+        string _dir;
+        bool _triggerPosChangedEvent = true;
 
         double[] _stepsize = new double[3] { 0, 0, 0 };
+
 
         /// <summary>
         /// Event is triggered, if some button is clicked or the position is updated. Eventargumetns are PositionChangeReqestEventArgs and they contain the new position as well as a flag to determine if motion is relative or not
@@ -86,6 +104,18 @@ namespace ActuatorControl
         /// <summary>
         /// Stepsizes: Small, Middle, Large, has to be array of length 3 -> if shorter, largers steps will be zero, if longer will be ignored
         /// </summary>
+
+        public double positionValue
+        {
+            get => (double)numericUpDown1.Value;
+            set
+            {
+                _triggerPosChangedEvent = false;
+                numericUpDown1.Value = (decimal)value;
+                _triggerPosChangedEvent = true;
+            }
+        }
+
         public double[] stepsize
         {
             set
@@ -114,7 +144,7 @@ namespace ActuatorControl
 
         private string formatText(double value, string input)
         {
-            return (input + " = "+ String.Format("{0:0.000}", value));
+            return (input + " = " + String.Format("{0:0.000}", value));
         }
         private double valueFromString(string input)
         {
@@ -129,41 +159,42 @@ namespace ActuatorControl
 
         private void BUTTON_pos0_Click(object sender, EventArgs e)
         {
-            OnPositionChanged(new PositionChangeReqestEventArgs(_stepsize[0], true));
+            OnPositionChanged(new PositionChangeReqestEventArgs(_stepsize[0], true, _dir));
         }
 
         private void BUTTON_pos1_Click(object sender, EventArgs e)
         {
-            OnPositionChanged(new PositionChangeReqestEventArgs(_stepsize[1], true));
+            OnPositionChanged(new PositionChangeReqestEventArgs(_stepsize[1], true, _dir));
         }
 
         private void BUTTON_pos2_Click(object sender, EventArgs e)
         {
-            OnPositionChanged(new PositionChangeReqestEventArgs(_stepsize[2], true));
+            OnPositionChanged(new PositionChangeReqestEventArgs(_stepsize[2], true, _dir));
         }
 
         private void BUTTON_neg0_Click(object sender, EventArgs e)
         {
-            OnPositionChanged(new PositionChangeReqestEventArgs(-_stepsize[0], true));
+            OnPositionChanged(new PositionChangeReqestEventArgs(-_stepsize[0], true, _dir));
         }
 
         private void BUTTON_neg1_Click(object sender, EventArgs e)
         {
-            OnPositionChanged(new PositionChangeReqestEventArgs(-_stepsize[1], true));
+            OnPositionChanged(new PositionChangeReqestEventArgs(-_stepsize[1], true, _dir));
         }
 
         private void BUTTON_neg2_Click(object sender, EventArgs e)
         {
-            OnPositionChanged(new PositionChangeReqestEventArgs(-_stepsize[2], true));
+            OnPositionChanged(new PositionChangeReqestEventArgs(-_stepsize[2], true, _dir));
         }
 
         private void numericUpDown1_ValueChanged(object sender, EventArgs e)
         {
-
-            OnPositionChanged(new PositionChangeReqestEventArgs((double)numericUpDown1.Value, false));
+            if (_triggerPosChangedEvent) OnPositionChanged(new PositionChangeReqestEventArgs((double)numericUpDown1.Value, false, _dir));
         }
 
-        private void cmTextBox_TextChanged(object sender, EventArgs e)
+
+
+        private void setToDeviceToolStripMenuItem_Click(object sender, EventArgs e)
         {
             double[] _s = new double[3] { 0, 0, 0 };
             double _v = valueFromString(cmTextBox_Vel.Text);
@@ -171,9 +202,11 @@ namespace ActuatorControl
             _s[0] = valueFromString(cmTextBox_StepMin.Text);
             _s[1] = valueFromString(cmTextBox_StepMid.Text);
             _s[2] = valueFromString(cmTextBox_StepMax.Text);
-            OnPositionParametersChanged(new PositionParametersChangeReqestEventArgs(_s, _v, _a));
+            this.velocity = _v;
+            this.acceleration = _a;
+            this.stepsize = _s;
+            OnPositionParametersChanged(new PositionParametersChangeReqestEventArgs(_s, _v, _a, _dir));
         }
-
 
     }
 }
